@@ -1,4 +1,4 @@
-[![Codeship Status for areatech/go-fixtures](https://codeship.com/projects/28f066b0-7ec5-0133-2918-0e889b1c091a/status?branch=master)](https://codeship.com/projects/120375)
+[![Codeship Status for areatech/go-fixtures](https://codeship.com/projects/f196fa10-84fb-0133-c7be-429ee0939cc9/status?branch=master)](https://codeship.com/projects/122147)
 
 # go-fixtures
 
