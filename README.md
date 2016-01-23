@@ -1,4 +1,4 @@
-[![Codeship Status for areatech/go-fixtures](https://codeship.com/projects/f196fa10-84fb-0133-c7be-429ee0939cc9/status?branch=master)](https://codeship.com/projects/122147)
+[![Codeship Status for AreaHQ/go-fixtures](https://codeship.com/projects/f196fa10-84fb-0133-c7be-429ee0939cc9/status?branch=master)](https://codeship.com/projects/122147)
 
 # go-fixtures
 
@@ -83,7 +83,7 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
-				
+
 				if err := fixtures.Load(data, db, "postgres"); err != nil {
 					log.Fatal(err)
 				}
