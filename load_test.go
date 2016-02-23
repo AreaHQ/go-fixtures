@@ -33,7 +33,13 @@ CREATE TABLE join_table(
   some_id INT NOT NULL,
   other_id INT NOT NULL,
   PRIMARY KEY(some_id, other_id)
-)`
+);
+
+CREATE TABLE string_key_table(
+ id varchar(50) PRIMARY KEY NOT NULL,
+ created_at DATETIME,
+ updated_at DATETIME
+ )`
 
 var testData = `
 ---
@@ -60,6 +66,13 @@ var testData = `
   pk:
     some_id: 1
     other_id: 2
+
+- table: 'string_key_table'
+  pk:
+    id: 'new_id'
+  fields:
+    created_at: 'ON_INSERT_NOW()'
+    updated_at: 'ON_UPDATE_NOW()'
 `
 
 func TestLoad(t *testing.T) {
@@ -109,6 +122,9 @@ func TestLoad(t *testing.T) {
 	db.QueryRow("SELECT COUNT(*) FROM other_table").Scan(&count)
 	assert.Equal(t, 1, count)
 	db.QueryRow("SELECT COUNT(*) FROM join_table").Scan(&count)
+	assert.Equal(t, 1, count)
+
+	db.QueryRow("SELECT COUNT(*) FROM string_key_table").Scan(&count)
 	assert.Equal(t, 1, count)
 
 	// Check correct data has been loaded into some_table
