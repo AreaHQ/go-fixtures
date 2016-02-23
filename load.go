@@ -8,12 +8,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const (
-	SQLCheckPKDataType = "SELECT data_type " +
-		"FROM information_schema.columns WHERE table_name=? " +
-		"AND column_name='id';"
-)
-
 // Load processes a YAML fixture and inserts/updates the database accordingly
 func Load(data []byte, db *sql.DB, driver string) error {
 	// Unmarshal the YAML data into a []Row slice
