@@ -54,11 +54,21 @@ func Load(data []byte, db *sql.DB, driver string) error {
 				return err
 			}
 			if driver == postgresDriver && row.GetInsertColumns()[0] == "id" {
-				// Fixed the primary ID sequence for Postgres
-				_, err := tx.Exec(fixPostgresPKSequence(row.Table))
+
+				var dtype string
+				err = tx.QueryRow(checkPKDataType(row.Table)).Scan(&dtype)
 				if err != nil {
 					tx.Rollback() // rollback the transaction
 					return err
+				}
+
+				if dtype == "integer" {
+					// Fixed the primary ID sequence for Postgres
+					_, err := tx.Exec(fixPostgresPKSequence(row.Table))
+					if err != nil {
+						tx.Rollback() // rollback the transaction
+						return err
+					}
 				}
 			}
 		} else {
@@ -76,11 +86,20 @@ func Load(data []byte, db *sql.DB, driver string) error {
 				return err
 			}
 			if driver == postgresDriver && row.GetUpdateColumns()[0] == "id" {
-				// Fixed the primary ID sequence for Postgres
-				_, err := tx.Exec(fixPostgresPKSequence(row.Table))
+				var dtype string
+				err = tx.QueryRow(checkPKDataType(row.Table)).Scan(&dtype)
 				if err != nil {
 					tx.Rollback() // rollback the transaction
 					return err
+				}
+
+				if dtype == "integer" {
+					// Fixed the primary ID sequence for Postgres
+					_, err := tx.Exec(fixPostgresPKSequence(row.Table))
+					if err != nil {
+						tx.Rollback() // rollback the transaction
+						return err
+					}
 				}
 			}
 		}
@@ -93,6 +112,15 @@ func Load(data []byte, db *sql.DB, driver string) error {
 	}
 
 	return nil
+}
+
+func checkPKDataType(table string) string {
+	return fmt.Sprintf(
+		"SELECT data_type "+
+			"FROM information_schema.columns WHERE table_name='%s' "+
+			"AND column_name='id';",
+		table,
+	)
 }
 
 // fixPostgresPKSequence resets primary key sequence after manual insertion
