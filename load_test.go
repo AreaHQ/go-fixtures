@@ -41,6 +41,13 @@ CREATE TABLE string_key_table(
  updated_at DATETIME
  )`
 
+var fixtureFile = "fixtures/test_fixtures1.yml"
+
+var fixtureFiles = []string{
+	"fixtures/test_fixtures1.yml",
+	"fixtures/test_fixtures2.yml",
+}
+
 var testData = `
 ---
 
@@ -75,7 +82,7 @@ var testData = `
     updated_at: 'ON_UPDATE_NOW()'
 `
 
-func TestLoad(t *testing.T) {
+func TestLoadWorksWithValidData(t *testing.T) {
 	// Delete the test database
 	os.Remove(testDbPath)
 
@@ -306,4 +313,271 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, 1, someID)
 		assert.Equal(t, 2, otherID)
 	}
+}
+
+func TestLoadFileWorksWithValidFile(t *testing.T) {
+	// Delete the test database
+	os.Remove(testDbPath)
+
+	var (
+		db  *sql.DB
+		err error
+	)
+
+	// Connect to an in-memory SQLite database
+	db, err = sql.Open("sqlite3", testDbPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Create a test schema
+	_, err = db.Exec(testSchema)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var count int
+	// Check row counts to show no data
+	db.QueryRow("SELECT COUNT(*) FROM some_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM other_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM join_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM string_key_table").Scan(&count)
+	assert.Equal(t, 0, count)
+
+	// Let's load the fixture, since the database is empty, this should run inserts
+	err = LoadFile(fixtureFile, db, "sqlite")
+
+	// Error should be nil
+	assert.Nil(t, err)
+
+	var (
+		rows         *sql.Rows
+		id           int
+		stringField  string
+		booleanField bool
+		createdAt    *time.Time
+		updatedAt    *time.Time
+	)
+
+	// Check row counts
+	db.QueryRow("SELECT COUNT(*) FROM some_table").Scan(&count)
+	assert.Equal(t, 1, count)
+	db.QueryRow("SELECT COUNT(*) FROM other_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM join_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM string_key_table").Scan(&count)
+	assert.Equal(t, 0, count)
+
+	// Check correct data has been loaded into some_table
+	rows, err = db.Query("SELECT id, string_field, boolean_field, " +
+		"created_at, updated_at FROM some_table")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(
+			&id,
+			&stringField,
+			&booleanField,
+			&createdAt,
+			&updatedAt,
+		); err != nil {
+			log.Fatal(err)
+		}
+
+		if err := rows.Err(); err != nil {
+			log.Fatal(err)
+		}
+
+		assert.Equal(t, 1, id)
+		assert.Equal(t, "foobar", stringField)
+		assert.Equal(t, true, booleanField)
+		assert.NotNil(t, createdAt)
+		assert.Nil(t, updatedAt)
+	}
+
+	// Let's reload the fixture, this should run updates
+	err = LoadFile(fixtureFile, db, "sqlite")
+
+	// Error should be nil
+	assert.Nil(t, err)
+
+	// Check row counts, should be unchanged
+	db.QueryRow("SELECT COUNT(*) FROM some_table").Scan(&count)
+	assert.Equal(t, 1, count)
+	db.QueryRow("SELECT COUNT(*) FROM other_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM join_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM string_key_table").Scan(&count)
+	assert.Equal(t, 0, count)
+}
+
+func TestLoadFileFailssWithMissingFile(t *testing.T) {
+	// Delete the test database
+	os.Remove(testDbPath)
+
+	var (
+		db  *sql.DB
+		err error
+	)
+
+	// Connect to an in-memory SQLite database
+	db, err = sql.Open("sqlite3", testDbPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Create a test schema
+	_, err = db.Exec(testSchema)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Let's load the fixture, since the database is empty, this should run inserts
+	err = LoadFile("bad_filename.yml", db, "sqlite")
+
+	// Error should be nil
+	assert.EqualError(t, err, "open bad_filename.yml: no such file or directory", "Expected file not found error")
+}
+
+func TestLoadFilesWorksWithValidFiles(t *testing.T) {
+	// Delete the test database
+	os.Remove(testDbPath)
+
+	var (
+		db  *sql.DB
+		err error
+	)
+
+	// Connect to an in-memory SQLite database
+	db, err = sql.Open("sqlite3", testDbPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Create a test schema
+	_, err = db.Exec(testSchema)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var count int
+
+	// Check rows are empty first
+	db.QueryRow("SELECT COUNT(*) FROM some_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM other_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM join_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM string_key_table").Scan(&count)
+	assert.Equal(t, 0, count)
+
+	// Let's load the fixture, since the database is empty, this should run inserts
+	err = LoadFiles(fixtureFiles, db, "sqlite")
+
+	// Error should be nil
+	assert.Nil(t, err)
+
+	// Check row counts
+	db.QueryRow("SELECT COUNT(*) FROM some_table").Scan(&count)
+	assert.Equal(t, 1, count)
+	db.QueryRow("SELECT COUNT(*) FROM other_table").Scan(&count)
+	assert.Equal(t, 1, count)
+	db.QueryRow("SELECT COUNT(*) FROM join_table").Scan(&count)
+	assert.Equal(t, 1, count)
+	db.QueryRow("SELECT COUNT(*) FROM string_key_table").Scan(&count)
+	assert.Equal(t, 1, count)
+
+	// Let's reload the fixtures, this should run updates
+	err = LoadFiles(fixtureFiles, db, "sqlite")
+
+	// Error should be nil
+	assert.Nil(t, err)
+
+	// Check row counts, should be unchanged
+	db.QueryRow("SELECT COUNT(*) FROM some_table").Scan(&count)
+	assert.Equal(t, 1, count)
+	db.QueryRow("SELECT COUNT(*) FROM other_table").Scan(&count)
+	assert.Equal(t, 1, count)
+	db.QueryRow("SELECT COUNT(*) FROM join_table").Scan(&count)
+	assert.Equal(t, 1, count)
+}
+
+func TestLoadFilesFailsWithABadFile(t *testing.T) {
+	// Delete the test database
+	os.Remove(testDbPath)
+
+	var (
+		db  *sql.DB
+		err error
+	)
+
+	// Connect to an in-memory SQLite database
+	db, err = sql.Open("sqlite3", testDbPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Create a test schema
+	_, err = db.Exec(testSchema)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var count int
+
+	// Check rows are empty first
+	db.QueryRow("SELECT COUNT(*) FROM some_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM other_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM join_table").Scan(&count)
+	assert.Equal(t, 0, count)
+	db.QueryRow("SELECT COUNT(*) FROM string_key_table").Scan(&count)
+	assert.Equal(t, 0, count)
+
+	var badList = []string{
+		fixtureFile,
+		"bad_file",
+	}
+
+	// Let's load the fixture, since the database is empty, this should run inserts
+	err = LoadFiles(badList, db, "sqlite")
+
+	// Error should be nil
+	assert.EqualError(t, err, "open bad_file: no such file or directory", "Expected file not found error")
+
+}
+
+func TestCheckPostgresPKWorks(t *testing.T) {
+	expected := "SELECT data_type " +
+		"FROM information_schema.columns " +
+		"WHERE table_name='test_table' " +
+		"AND column_name='id';"
+
+	actual := checkPostgresPKDataType("test_table")
+
+	assert.Equal(t, actual, expected, "Data type sql should match")
+}
+
+func TestFixPostgresSequenceWorks(t *testing.T) {
+	expected := "SELECT pg_catalog.setval(" +
+		"pg_get_serial_sequence('test_table', 'id'), " +
+		"(SELECT MAX(id) FROM test_table));"
+
+	actual := fixPostgresPKSequence("test_table")
+
+	assert.Equal(t, actual, expected, "Sequence fix sql should match")
 }

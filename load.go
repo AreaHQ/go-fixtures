@@ -3,6 +3,7 @@ package fixtures
 import (
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -56,7 +57,7 @@ func Load(data []byte, db *sql.DB, driver string) error {
 			if driver == postgresDriver && row.GetInsertColumns()[0] == "id" {
 
 				var dtype string
-				err = tx.QueryRow(checkPKDataType(row.Table)).Scan(&dtype)
+				err = tx.QueryRow(checkPostgresPKDataType(row.Table)).Scan(&dtype)
 				if err != nil {
 					tx.Rollback() // rollback the transaction
 					return err
@@ -87,7 +88,7 @@ func Load(data []byte, db *sql.DB, driver string) error {
 			}
 			if driver == postgresDriver && row.GetUpdateColumns()[0] == "id" {
 				var dtype string
-				err = tx.QueryRow(checkPKDataType(row.Table)).Scan(&dtype)
+				err = tx.QueryRow(checkPostgresPKDataType(row.Table)).Scan(&dtype)
 				if err != nil {
 					tx.Rollback() // rollback the transaction
 					return err
@@ -114,7 +115,7 @@ func Load(data []byte, db *sql.DB, driver string) error {
 	return nil
 }
 
-func checkPKDataType(table string) string {
+func checkPostgresPKDataType(table string) string {
 	return fmt.Sprintf(
 		"SELECT data_type "+
 			"FROM information_schema.columns WHERE table_name='%s' "+
@@ -131,4 +132,24 @@ func fixPostgresPKSequence(table string) string {
 		table,
 		table,
 	)
+}
+
+func LoadFile(filename string, db *sql.DB, driver string) error {
+	// Read fixture data from the file
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	// Insert the fixture data
+	return Load(data, db, driver)
+}
+
+func LoadFiles(filenames []string, db *sql.DB, driver string) error {
+	for _, filename := range filenames {
+		if err := LoadFile(filename, db, driver); err != nil {
+			return err
+		}
+	}
+	return nil
 }
