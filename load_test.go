@@ -446,7 +446,7 @@ func TestLoadFileFailssWithMissingFile(t *testing.T) {
 	err = LoadFile("bad_filename.yml", db, "sqlite")
 
 	// Error should be nil
-	assert.EqualError(t, err, "open bad_filename.yml: no such file or directory", "Expected file not found error")
+	assert.EqualError(t, err, "Error loading file bad_filename.yml: open bad_filename.yml: no such file or directory")
 }
 
 func TestLoadFilesWorksWithValidFiles(t *testing.T) {
@@ -557,7 +557,7 @@ func TestLoadFilesFailsWithABadFile(t *testing.T) {
 	err = LoadFiles(badList, db, "sqlite")
 
 	// Error should be nil
-	assert.EqualError(t, err, "open bad_file: no such file or directory", "Expected file not found error")
+	assert.EqualError(t, err, "Error loading file bad_file: open bad_file: no such file or directory")
 
 }
 
