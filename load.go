@@ -10,11 +10,11 @@ import (
 )
 
 func NewProcessingError(row int, cause error) error {
-	return fmt.Errorf("Error processing row %d: %s", row, cause.Error())
+	return fmt.Errorf("Error loading row %d: %s", row, cause.Error())
 }
 
 func NewFileError(filename string, cause error) error {
-	return fmt.Errorf("Error processing file %s: %s", filename, cause.Error())
+	return fmt.Errorf("Error loading file %s: %s", filename, cause.Error())
 }
 
 // Load processes a YAML fixture and inserts/updates the database accordingly
