@@ -101,12 +101,20 @@ func (row *Row) GetUpdateColumnsLength() int {
 
 // GetInsertColumns returns a slice of column names for INSERT query
 func (row *Row) GetInsertColumns() []string {
-	return row.insertColumns
+	escapedColumns := make([]string, len(row.insertColumns))
+	for i, insertColumn := range row.insertColumns {
+		escapedColumns[i] = fmt.Sprintf("\"%s\"", insertColumn)
+	}
+	return escapedColumns
 }
 
 // GetUpdateColumns returns a slice of column names for UPDATE query
 func (row *Row) GetUpdateColumns() []string {
-	return row.updateColumns
+	escapedColumns := make([]string, len(row.updateColumns))
+	for i, updateColumn := range row.updateColumns {
+		escapedColumns[i] = fmt.Sprintf("\"%s\"", updateColumn)
+	}
+	return escapedColumns
 }
 
 // GetInsertValues returns a slice of values for INSERT query

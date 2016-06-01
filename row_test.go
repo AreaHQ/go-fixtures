@@ -36,11 +36,11 @@ func TestRow(t *testing.T) {
 	assert.Equal(t, 5, row.GetUpdateColumnsLength())
 
 	// Test insert and update columns
-	expectedStrings = []string{"other_id", "some_id",
-		"boolean_field", "created_at", "string_field"}
+	expectedStrings = []string{"\"other_id\"", "\"some_id\"",
+		"\"boolean_field\"", "\"created_at\"", "\"string_field\""}
 	assert.Equal(t, expectedStrings, row.GetInsertColumns())
-	expectedStrings = []string{"other_id", "some_id",
-		"boolean_field", "string_field", "updated_at"}
+	expectedStrings = []string{"\"other_id\"", "\"some_id\"",
+		"\"boolean_field\"", "\"string_field\"", "\"updated_at\""}
 	assert.Equal(t, expectedStrings, row.GetUpdateColumns())
 
 	// Test postgres placeholders ($1, $2 and so on)
