@@ -46,15 +46,15 @@ func TestRow(t *testing.T) {
 	// Test postgres placeholders ($1, $2 and so on)
 	expectedStrings = []string{"$1", "$2", "$3", "$4", "$5"}
 	assert.Equal(t, expectedStrings, row.GetInsertPlaceholders("postgres"))
-	expectedStrings = []string{"other_id = $1", "some_id = $2",
-		"boolean_field = $3", "string_field = $4", "updated_at = $5"}
+	expectedStrings = []string{"\"other_id\" = $1", "\"some_id\" = $2",
+		"\"boolean_field\" = $3", "\"string_field\" = $4", "\"updated_at\" = $5"}
 	assert.Equal(t, expectedStrings, row.GetUpdatePlaceholders("postgres"))
 
 	// Test non postgres placeholders (?)
 	expectedStrings = []string{"?", "?", "?", "?", "?"}
 	assert.Equal(t, expectedStrings, row.GetInsertPlaceholders("sqlite"))
-	expectedStrings = []string{"other_id = ?", "some_id = ?",
-		"boolean_field = ?", "string_field = ?", "updated_at = ?"}
+	expectedStrings = []string{"\"other_id\" = ?", "\"some_id\" = ?",
+		"\"boolean_field\" = ?", "\"string_field\" = ?", "\"updated_at\" = ?"}
 	assert.Equal(t, expectedStrings, row.GetUpdatePlaceholders("sqlite"))
 
 	// Test where clause
