@@ -19,31 +19,6 @@ func NewFileError(filename string, cause error) error {
 	return fmt.Errorf("Error loading file %s: %s", filename, cause.Error())
 }
 
-// fixPostgresPKSequence
-func fixPostgresPKSequence(tx *sql.Tx, table string, column string) error {
-	// Query for the qualified sequence name
-	var seqName *string
-	err := tx.QueryRow(`
-		SELECT pg_get_serial_sequence($1, $2)
-	`, table, column).Scan(&seqName)
-
-	if err != nil {
-		return err
-	}
-
-	if seqName == nil {
-		// No sequence to fix
-		return nil
-	}
-
-	// Set the sequence
-	_, err = tx.Exec(fmt.Sprintf(`
-		SELECT pg_catalog.setval($1, (SELECT MAX("%s") FROM "%s"))
-	`, column, table), *seqName)
-
-	return err
-}
-
 // Load processes a YAML fixture and inserts/updates the database accordingly
 func Load(data []byte, db *sql.DB, driver string) error {
 	// Unmarshal the YAML data into a []Row slice
@@ -149,4 +124,29 @@ func LoadFiles(filenames []string, db *sql.DB, driver string) error {
 		}
 	}
 	return nil
+}
+
+// fixPostgresPKSequence
+func fixPostgresPKSequence(tx *sql.Tx, table string, column string) error {
+	// Query for the qualified sequence name
+	var seqName *string
+	err := tx.QueryRow(`
+		SELECT pg_get_serial_sequence($1, $2)
+	`, table, column).Scan(&seqName)
+
+	if err != nil {
+		return err
+	}
+
+	if seqName == nil {
+		// No sequence to fix
+		return nil
+	}
+
+	// Set the sequence
+	_, err = tx.Exec(fmt.Sprintf(`
+		SELECT pg_catalog.setval($1, (SELECT MAX("%s") FROM "%s"))
+	`, column, table), *seqName)
+
+	return err
 }

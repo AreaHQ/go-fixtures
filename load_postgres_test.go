@@ -2,110 +2,43 @@ package fixtures
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
-	"os"
+	"os/exec"
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
+	// Driver
+	_ "github.com/lib/pq"
 )
 
-var testDbPath = "/tmp/fixtures_testdb.sqlite"
+var (
+	testPostgresDbUser = "go_fixtures"
+	testPostgresDbName = "go_fixtures_test"
+)
 
-var testSchema = `CREATE TABLE some_table(
-  id INT PRIMARY KEY NOT NULL,
-  string_field CHAR(50) NOT NULL,
-  boolean_field BOOL NOT NULL,
-  created_at DATETIME,
-  updated_at DATETIME
-);
-
-CREATE TABLE other_table(
-  id INT PRIMARY KEY NOT NULL,
-  int_field INT NOT NULL,
-  boolean_field BOOL NOT NULL,
-  created_at DATETIME,
-  updated_at DATETIME
-);
-
-CREATE TABLE join_table(
-  some_id INT NOT NULL,
-  other_id INT NOT NULL,
-  PRIMARY KEY(some_id, other_id)
-);
-
-CREATE TABLE string_key_table(
- id varchar(50) PRIMARY KEY NOT NULL,
- created_at DATETIME,
- updated_at DATETIME
- )`
-
-var fixtureFile = "fixtures/test_fixtures1.yml"
-
-var fixtureFiles = []string{
-	"fixtures/test_fixtures1.yml",
-	"fixtures/test_fixtures2.yml",
-}
-
-var testData = `
----
-
-- table: 'some_table'
-  pk:
-    id: 1
-  fields:
-    string_field: 'foobar'
-    boolean_field: true
-    created_at: 'ON_INSERT_NOW()'
-    updated_at: 'ON_UPDATE_NOW()'
-
-- table: 'other_table'
-  pk:
-    id: 2
-  fields:
-    int_field: 123
-    boolean_field: false
-    created_at: 'ON_INSERT_NOW()'
-    updated_at: 'ON_UPDATE_NOW()'
-
-- table: 'join_table'
-  pk:
-    some_id: 1
-    other_id: 2
-
-- table: 'string_key_table'
-  pk:
-    id: 'new_id'
-  fields:
-    created_at: 'ON_INSERT_NOW()'
-    updated_at: 'ON_UPDATE_NOW()'
-`
-
-func TestLoadWorksWithValidData(t *testing.T) {
-	// Delete the test database
-	os.Remove(testDbPath)
-
+func TestLoadWorksWithValidDataPostgres(t *testing.T) {
 	var (
 		db  *sql.DB
 		err error
 	)
 
-	// Connect to an in-memory SQLite database
-	db, err = sql.Open("sqlite3", testDbPath)
+	// Connect to a test Postgres db
+	db, err = rebuildDatabasePostgres(testPostgresDbUser, testPostgresDbName)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
 	// Create a test schema
-	_, err = db.Exec(testSchema)
+	_, err = db.Exec(testSchemaPostgres)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Let's load the fixture, since the database is empty, this should run inserts
-	err = Load([]byte(testData), db, "sqlite")
+	err = Load([]byte(testData), db, "postgres")
 
 	// Error should be nil
 	assert.Nil(t, err)
@@ -218,7 +151,7 @@ func TestLoadWorksWithValidData(t *testing.T) {
 	}
 
 	// Let's reload the fixture, this should run updates
-	err = Load([]byte(testData), db, "sqlite")
+	err = Load([]byte(testData), db, "postgres")
 
 	// Error should be nil
 	assert.Nil(t, err)
@@ -315,24 +248,21 @@ func TestLoadWorksWithValidData(t *testing.T) {
 	}
 }
 
-func TestLoadFileWorksWithValidFile(t *testing.T) {
-	// Delete the test database
-	os.Remove(testDbPath)
-
+func TestLoadFileWorksWithValidFilePostgres(t *testing.T) {
 	var (
 		db  *sql.DB
 		err error
 	)
 
-	// Connect to an in-memory SQLite database
-	db, err = sql.Open("sqlite3", testDbPath)
+	// Connect to a test Postgres db
+	db, err = rebuildDatabasePostgres(testPostgresDbUser, testPostgresDbName)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
 	// Create a test schema
-	_, err = db.Exec(testSchema)
+	_, err = db.Exec(testSchemaPostgres)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -349,7 +279,7 @@ func TestLoadFileWorksWithValidFile(t *testing.T) {
 	assert.Equal(t, 0, count)
 
 	// Let's load the fixture, since the database is empty, this should run inserts
-	err = LoadFile(fixtureFile, db, "sqlite")
+	err = LoadFile(fixtureFile, db, "postgres")
 
 	// Error should be nil
 	assert.Nil(t, err)
@@ -404,7 +334,7 @@ func TestLoadFileWorksWithValidFile(t *testing.T) {
 	}
 
 	// Let's reload the fixture, this should run updates
-	err = LoadFile(fixtureFile, db, "sqlite")
+	err = LoadFile(fixtureFile, db, "postgres")
 
 	// Error should be nil
 	assert.Nil(t, err)
@@ -420,53 +350,47 @@ func TestLoadFileWorksWithValidFile(t *testing.T) {
 	assert.Equal(t, 0, count)
 }
 
-func TestLoadFileFailssWithMissingFile(t *testing.T) {
-	// Delete the test database
-	os.Remove(testDbPath)
-
+func TestLoadFileFailssWithMissingFilePostgres(t *testing.T) {
 	var (
 		db  *sql.DB
 		err error
 	)
 
-	// Connect to an in-memory SQLite database
-	db, err = sql.Open("sqlite3", testDbPath)
+	// Connect to a test Postgres db
+	db, err = rebuildDatabasePostgres(testPostgresDbUser, testPostgresDbName)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
 	// Create a test schema
-	_, err = db.Exec(testSchema)
+	_, err = db.Exec(testSchemaPostgres)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Let's load the fixture, since the database is empty, this should run inserts
-	err = LoadFile("bad_filename.yml", db, "sqlite")
+	err = LoadFile("bad_filename.yml", db, "postgres")
 
 	// Error should be nil
 	assert.EqualError(t, err, "Error loading file bad_filename.yml: open bad_filename.yml: no such file or directory")
 }
 
-func TestLoadFilesWorksWithValidFiles(t *testing.T) {
-	// Delete the test database
-	os.Remove(testDbPath)
-
+func TestLoadFilesWorksWithValidFilesPostgres(t *testing.T) {
 	var (
 		db  *sql.DB
 		err error
 	)
 
-	// Connect to an in-memory SQLite database
-	db, err = sql.Open("sqlite3", testDbPath)
+	// Connect to a test Postgres db
+	db, err = rebuildDatabasePostgres(testPostgresDbUser, testPostgresDbName)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
 	// Create a test schema
-	_, err = db.Exec(testSchema)
+	_, err = db.Exec(testSchemaPostgres)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -484,7 +408,7 @@ func TestLoadFilesWorksWithValidFiles(t *testing.T) {
 	assert.Equal(t, 0, count)
 
 	// Let's load the fixture, since the database is empty, this should run inserts
-	err = LoadFiles(fixtureFiles, db, "sqlite")
+	err = LoadFiles(fixtureFiles, db, "postgres")
 
 	// Error should be nil
 	assert.Nil(t, err)
@@ -500,7 +424,7 @@ func TestLoadFilesWorksWithValidFiles(t *testing.T) {
 	assert.Equal(t, 1, count)
 
 	// Let's reload the fixtures, this should run updates
-	err = LoadFiles(fixtureFiles, db, "sqlite")
+	err = LoadFiles(fixtureFiles, db, "postgres")
 
 	// Error should be nil
 	assert.Nil(t, err)
@@ -514,24 +438,21 @@ func TestLoadFilesWorksWithValidFiles(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
-func TestLoadFilesFailsWithABadFile(t *testing.T) {
-	// Delete the test database
-	os.Remove(testDbPath)
-
+func TestLoadFilesFailsWithABadFilePostgres(t *testing.T) {
 	var (
 		db  *sql.DB
 		err error
 	)
 
-	// Connect to an in-memory SQLite database
-	db, err = sql.Open("sqlite3", testDbPath)
+	// Connect to a test Postgres db
+	db, err = rebuildDatabasePostgres(testPostgresDbUser, testPostgresDbName)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
 	// Create a test schema
-	_, err = db.Exec(testSchema)
+	_, err = db.Exec(testSchemaPostgres)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -554,30 +475,51 @@ func TestLoadFilesFailsWithABadFile(t *testing.T) {
 	}
 
 	// Let's load the fixture, since the database is empty, this should run inserts
-	err = LoadFiles(badList, db, "sqlite")
+	err = LoadFiles(badList, db, "postgres")
 
 	// Error should be nil
 	assert.EqualError(t, err, "Error loading file bad_file: open bad_file: no such file or directory")
-
 }
 
-func TestCheckPostgresPKWorks(t *testing.T) {
-	expected := "SELECT data_type " +
-		"FROM information_schema.columns " +
-		"WHERE table_name='test_table' " +
-		"AND column_name='id';"
+// rebuildDatabase attempts to delete an existing Postgres
+// database and rebuild it, returning a pointer to it
+func rebuildDatabasePostgres(dbUser, dbName string) (*sql.DB, error) {
 
-	actual := checkPostgresPKDataType("test_table")
+	dropPostgresDB(dbUser, dbName)
 
-	assert.Equal(t, actual, expected, "Data type sql should match")
+	if err := createPostgresDB(dbUser, dbName); err != nil {
+		return nil, err
+	}
+
+	return openPostgresDB(dbUser, dbName)
 }
 
-func TestFixPostgresSequenceWorks(t *testing.T) {
-	expected := "SELECT pg_catalog.setval(" +
-		"pg_get_serial_sequence('test_table', 'id'), " +
-		"(SELECT MAX(id) FROM test_table));"
+func openPostgresDB(dbUser, dbName string) (*sql.DB, error) {
+	// Init a new postgres test database connection
+	return sql.Open("postgres",
+		fmt.Sprintf(
+			"sslmode=disable host=localhost port=5432 user=%s password='' dbname=%s",
+			dbUser,
+			dbName,
+		),
+	)
+}
 
-	actual := fixPostgresPKSequence("test_table")
+func createPostgresDB(dbUser, dbName string) error {
+	// Create a new test database
+	createDbCmd := fmt.Sprintf("createdb -U %s %s", dbUser, dbName)
+	log.Println(createDbCmd)
+	out, err := exec.Command("sh", "-c", createDbCmd).Output()
+	if err != nil {
+		log.Printf("%v", string(out))
+		return err
+	}
+	return nil
+}
 
-	assert.Equal(t, actual, expected, "Sequence fix sql should match")
+func dropPostgresDB(dbUser, dbName string) {
+	// Delete the current database if it exists
+	dropDbCmd := fmt.Sprintf("dropdb --if-exists -U %s %s", dbUser, dbName)
+	fmt.Println(dropDbCmd)
+	exec.Command("sh", "-c", dropDbCmd).Output()
 }
